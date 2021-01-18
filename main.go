@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"funding/auth"
 	"funding/campaign"
 	"funding/handler"
@@ -27,8 +28,11 @@ func main() {
 	campaignRepository := campaign.NewRepository(db)
 
 	userService := user.NewService(userRepository)
+	campaignService := campaign.NewService(campaignRepository)
 	authService := auth.NewService()
 
+	campaigns, _ := campaignService.FindCampaigns(9)
+	fmt.Println(len(campaigns))
 	userHandler := handler.NewUserHandler(userService, authService)
 
 	router := gin.Default()
