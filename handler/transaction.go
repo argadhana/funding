@@ -2,9 +2,10 @@ package handler
 
 import (
 	"funding/helper"
-	"funding/transaction"
 	"funding/user"
 	"net/http"
+
+	"funding/transaction"
 
 	"github.com/gin-gonic/gin"
 )

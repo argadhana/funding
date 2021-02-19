@@ -10,9 +10,13 @@ import (
 	"funding/user"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strings"
 
+	webHandler "funding/web/handler"
+
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -40,14 +44,24 @@ func main() {
 	campaignHandler := handler.NewCampaignHandler(campaignService)
 	transactionHandler := handler.NewTransactionHandler(transactionService)
 
+	userWebHandler := webHandler.NewUserHandler(userService)
+	campaignWebHandler := webHandler.NewCampaignHandler(campaignService, userService)
+
 	router := gin.Default()
+
+	router.HTMLRender = loadTemplates("./web/templates")
+
 	router.Static("/images", "./images")
+	router.Static("/css", "./web/assets/css")
+	router.Static("/js", "./web/assets/js")
+	router.Static("/webfonts", "./web/assets/webfonts")
+
 	api := router.Group("/api/v1")
 	api.POST("/users", userHandler.RegisterUser)
 	api.POST("/sessions", userHandler.Login)
 	api.POST("/email_checkers", userHandler.CheckEmailAvailability)
 	api.POST("/avatars", authMiddleware(authService, userService), userHandler.UploadAvatar)
-	api.POST("/avatars", authMiddleware(authService, userService), userHandler.FetchUser)
+	api.POST("/users/fetch", authMiddleware(authService, userService), userHandler.FetchUser)
 
 	api.GET("/campaigns", campaignHandler.GetCampaigns)
 	api.GET("/campaign/:id", campaignHandler.GetCampaign)
@@ -60,6 +74,16 @@ func main() {
 	api.POST("/transaction", authMiddleware(authService, userService), transactionHandler.CreateTransaction)
 	api.POST("/transaction/notification", transactionHandler.GetNotification)
 
+	router.GET("/users", userWebHandler.Index)
+	router.GET("/users/new", userWebHandler.New)
+	router.POST("/users", userWebHandler.Create)
+	router.GET("/users/edit/:id", userWebHandler.Edit)
+	router.POST("/users/update/:id", userWebHandler.Update)
+	router.GET("/users/avatar/:id", userWebHandler.NewAvatar)
+	router.POST("/users/avatar/:id", userWebHandler.CreateAvatar)
+
+	router.GET("/campaigns", campaignWebHandler.Index)
+	router.GET("/campaigns/new", campaignWebHandler.New)
 	router.Run()
 
 }
@@ -105,4 +129,26 @@ func authMiddleware(authService auth.Service, userService user.Service) gin.Hand
 		c.Set("currentUser", user)
 	}
 
+}
+
+func loadTemplates(templatesDir string) multitemplate.Renderer {
+	r := multitemplate.NewRenderer()
+
+	layouts, err := filepath.Glob(templatesDir + "/layouts/*")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	includes, err := filepath.Glob(templatesDir + "/**/*")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for _, include := range includes {
+		layoutCopy := make([]string, len(layouts))
+		copy(layoutCopy, layouts)
+		files := append(layoutCopy, include)
+		r.AddFromFiles(filepath.Base(include), files...)
+	}
+	return r
 }
