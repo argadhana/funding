@@ -12,6 +12,7 @@ type Service interface {
 	GetTransactionsByUserID(userID int) ([]Transaction, error)
 	CreateTransaction(input CreateTransactionInput) (Transaction, error)
 	ProcessPayment(input TransactionNotificationInput) error
+	GetAllTransaction() ([]Transaction, error)
 }
 
 type service struct {
@@ -121,4 +122,13 @@ func (s *service) ProcessPayment(input TransactionNotificationInput) error {
 
 	return nil
 
+}
+
+func (s *service) GetAllTransaction() ([]Transaction, error) {
+	transactions, err := s.repository.FindAll()
+	if err != nil {
+		return transactions, err
+	}
+
+	return transactions, nil
 }
